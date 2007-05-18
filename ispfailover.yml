@@ -1,10 +1,6 @@
 probe:
-  timeout: 3
-  hosts: [ "193.205.245.66", "213.198.89.138",
-           "212.211.132.32", "151.1.1.1",
-           "212.211.132.250", "194.109.137.218" ]
-  service: echo
-  interval: 4
+  timeout: 5
+  interval: 90
 
 interfaces: 
   ppp0:
