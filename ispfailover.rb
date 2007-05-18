@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'simplehashwithindifferentaccess'
 require 'facets/core/array/shuffle'
-require 'resolv-replace'
+require 'resolv'
 require 'bindping'
 require 'thread'
 require 'yaml'
@@ -20,12 +20,17 @@ module ISPFailOver
       Syslog.open $0, Syslog::LOG_NDELAY|Syslog::LOG_PID, Syslog::LOG_DAEMON
 
       @conf = YAML.load File.read('ispfailover.yml')
+      @conf[:probe][:hosts] = ('a'..'m').map { |x| Resolv.getaddress("#{x}.root-servers.net") }.compact
+      @conf[:probe][:service] = 53
+      Syslog.info "initializing, loaded #{@conf[:probe][:hosts].size} probe hosts"
+
       @master = Thread.new &self.master_proc
       @linkmon = Thread.new &self.linkmon_proc
       @monitors = {}
       (IPRoute.links.keys & @conf[:interfaces].keys).each do |interface|
         spawn(interface)
       end
+
       @master.join
     end
 
@@ -36,8 +41,8 @@ module ISPFailOver
 
         probe = @conf[:probe].dup
         while (local = IPRoute.local_host interface).nil?
-          Syslog.info "waiting for #{interface} to acquire remote address"
-          sleep rand
+          Syslog.info "waiting for #{interface} to acquire address"
+          sleep(rand + 1)
         end
 
         probe[:local] = local
@@ -75,8 +80,6 @@ module ISPFailOver
       }
     end
 
-    require 'ruby-debug'
-    Debugger.start
     def linkmon_proc
       proc {
         IPRoute.foreach_link_change do |action, (iface, id)|
