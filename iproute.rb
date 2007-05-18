@@ -20,31 +20,31 @@ module IPRoute
       Mutex.synchronize do
         begin
           add_route dest, gw, iface, 'monitor'
-          run "ip -4 rule add to #{dest} lookup monitor"
+          `ip -4 rule add to #{dest} lookup monitor`
           yield
 
         ensure
-          run "ip -4 rule del to #{dest} lookup monitor"
+          `ip -4 rule del to #{dest} lookup monitor`
           del_route dest, gw, iface, 'monitor'
         end
       end
     end
 
     def add_route(dest, gw, iface, table = 'main')
-      run "ip -4 route add #{dest} via #{gw} dev #{iface} table #{table}"
+      `ip -4 route add #{dest} via #{gw} dev #{iface} table #{table}`
     end
 
     def del_route(dest, gw, iface, table = 'main')
-      run "ip -4 route del #{dest} via #{gw} dev #{iface} table #{table}"
+      `ip -4 route del #{dest} via #{gw} dev #{iface} table #{table}`
     end
 
     def add_nexthop(gw, iface, wgt = 1)
       Mutex.synchronize do
         if default_route.nil? || default_route.empty?
-          run "ip -4 route add default #{nexthop(gw, iface, wgt)}"
+          `ip -4 route add default #{nexthop(gw, iface, wgt)}`
         else
           hops = nexthops(iface).push(nexthop(gw, iface, wgt))
-          run "ip -4 route change default #{hops.join ' '}"
+          `ip -4 route change default #{hops.join ' '}`
         end
       end
     end
@@ -52,11 +52,11 @@ module IPRoute
     def del_nexthop(gw, iface)
       Mutex.synchronize do
         unless (hops = nexthops(iface)).empty?
-          run "ip -4 route change default #{hops.join ' '}"
-          run "ip -4 route flush cache dev #{iface}"
+          `ip -4 route change default #{hops.join ' '}`
+          `ip -4 route flush cache dev #{iface}`
         else
-          run "ip -4 route del default"
-          run "ip -4 route flush cache"
+          `ip -4 route del default`
+          `ip -4 route flush cache`
         end
       end
     end
@@ -74,7 +74,7 @@ module IPRoute
     end
 
     def links
-    `ip -o link ls`.split("\n").map! { |link| parse_link link }.to_h
+      `ip -o link ls`.split("\n").map! { |link| parse_link link }.to_h
     end
 
     def foreach_link_change
@@ -91,11 +91,7 @@ module IPRoute
 
     protected
     def nexthop(gw, iface, wgt)
-    "nexthop via #{gw} dev #{iface} weight #{wgt}"
-    end
-
-    def run(cmd)
-      puts "#{cmd}: " << `#{cmd}`
+      "nexthop via #{gw} dev #{iface} weight #{wgt}"
     end
 
     def parse_link(link)
