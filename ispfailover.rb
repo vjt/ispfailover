@@ -1,111 +1,161 @@
+require 'rubygems'
 require 'simplehashwithindifferentaccess'
-#require 'facets/more/opencascade'
+require 'facets/core/array/shuffle'
 require 'resolv-replace'
 require 'bindping'
 require 'thread'
 require 'yaml'
 require 'iproute'
+require 'syslog'
 
 Thread.abort_on_exception = true
 
 module ISPFailOver
-  SyncMutex = ::Mutex.new
-  SyncCond = ::ConditionVariable.new
+  Mutex = ::Mutex.new
+  Cond = ::ConditionVariable.new
   $slot = nil
-
-  RtMutex = ::Mutex.new
 
   class Master
     def initialize
-      @conf = YAML.load(File.read('ispfailover.yml'))
-      @master = Thread.new &self.to_proc
-      @threads = @conf[:providers].map do |name, conf|
-        probe = @conf[:probe].dup
-        probe[:local] = IPRoute.local_host conf[:interface]
-        Thread.new &Monitor.new(name, conf, probe).to_proc
+      Syslog.open $0, Syslog::LOG_NDELAY|Syslog::LOG_PID, Syslog::LOG_DAEMON
+
+      @conf = YAML.load File.read('ispfailover.yml')
+      @master = Thread.new &self.master_proc
+      @linkmon = Thread.new &self.linkmon_proc
+      @monitors = {}
+      (IPRoute.links.keys & @conf[:interfaces].keys).each do |interface|
+        spawn(interface)
       end
       @master.join
     end
 
-    def kill
-      @master.kill
-      @threads.each { |t| t.kill }
+    def spawn(interface)
+      Mutex.synchronize do
+        conf = @conf[:interfaces][interface].dup
+        conf[:interface] = interface
+
+        probe = @conf[:probe].dup
+        while (local = IPRoute.local_host interface).nil?
+          Syslog.info "waiting for #{interface} to acquire remote address"
+          sleep rand
+        end
+
+        probe[:local] = local
+        @monitors[interface] = Monitor.new(conf, probe)
+      end
     end
 
-    def to_proc
+    def kill(interface)
+      Mutex.synchronize do
+        @monitors[interface].thread.kill
+        @monitors.delete interface
+      end
+    end
+
+    def active?(interface)
+      Mutex.synchronize do
+        !@monitors[interface].nil?
+      end
+    end
+
+    def killall
+      @master.kill
+      @monitors.each { |m| m.thread.kill }
+    end
+
+    protected
+    def master_proc
       proc {
         loop do
-          SyncMutex.synchronize do
-            SyncCond.wait(SyncMutex)
-
-            monitor = $slot
-            conf = @conf[:providers][monitor.name]
-            if monitor.status == :alive
-              IPRoute.add_nexthop conf[:gateway], conf[:interface], conf[:weight]
-            else
-              IPRoute.del_nexthop conf[:gateway], conf[:interface], conf[:weight]
-            end
+          Mutex.synchronize do
+            Cond.wait(Mutex)
+            update_rib $slot
           end
         end
       }
     end
+
+    require 'ruby-debug'
+    Debugger.start
+    def linkmon_proc
+      proc {
+        IPRoute.foreach_link_change do |action, (iface, id)|
+          provider = @conf[:interfaces][iface][:provider]
+          if action == :delete
+            Syslog.warning "#{provider} interface #{iface} went down, killing worker thread"
+            kill(iface)
+            @monitors.values.each { |mon| update_rib mon.conf }
+          elsif !active?(iface)
+            Syslog.info "#{provider} interface #{iface} is back up, restarting worker thread"
+            spawn(iface)
+          end
+        end
+      }
+    end
+
+    def update_rib(conf)
+      if conf[:status] == :alive
+        IPRoute.add_nexthop conf[:gateway], conf[:interface], conf[:weight]
+      else
+        IPRoute.del_nexthop conf[:gateway], conf[:interface]
+      end
+    end
   end
 
   class Monitor
-    def initialize(name, conf, probe_conf)
-      @name = name
+    def initialize(conf, probe)
+      sleep 0.4 # give threads a bit of skew
       @conf = conf
-      @probe = probe_conf
-      @status = probe
+      @probe = probe
+      @thread = Thread.new &self
     end
-
-    attr_reader :name, :status
+    attr_reader :thread, :conf
 
     def to_proc
       proc {
+        Syslog.info "#{@conf[:provider]} thread started."
+
         loop do
-          wait
           status = probe
-          if status != @status
-            @status = status
+          if status != @conf[:status]
+            @conf[:status] = status
             signal
           end
-
+          wait
         end
       }
     end
 
     def probe
-      with_temp_route(@probe[:host], @conf[:gateway], @conf[:interface]) do
-        if Ping.probe @probe[:host], @probe[:service], @probe[:local], @probe[:timeout]
-          puts "#{name} is alive!"
-          :alive
-        else
-          puts "#{name} is dead."
-          :dead
+      @probe[:hosts].shuffle.each do |host|
+        if @conf[:status] == :dead
+          IPRoute.with_temp_route(host, @conf[:gateway], @conf[:interface]) do
+            return :alive if ping(host)
+          end
+          wait
+        elsif ping(host)
+          return :alive
         end
       end
+      :dead
     end
 
-    def with_temp_route(host, gw, iface)
-      ret = nil
-      RtMutex.synchronize do
-        IPRoute.add_route host, gw, iface
-        ret = yield
-        IPRoute.del_route host, gw, iface
-      end
-      ret
+    def ping host
+      Ping.probe host, @probe[:service], @probe[:local], @probe[:timeout]
     end
 
     def signal
-      SyncMutex.synchronize do
-        $slot = self
-        SyncCond.signal
+      Mutex.synchronize do
+        Syslog.warning "#{@conf[:provider]} changed state to #{@conf[:status]}"
+        $slot = @conf
+
+        Cond.signal
       end
     end
 
     def wait
-      sleep @probe[:interval]
+      threshold = @conf[:status] == :active ? 30 : 0
+      sleep @probe[:interval] + threshold
     end
   end
 end
