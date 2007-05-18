@@ -1,15 +1,17 @@
 probe:
   timeout: 3
-  host: "193.205.245.66"
+  hosts: [ "193.205.245.66", "213.198.89.138",
+           "212.211.132.32", "151.1.1.1",
+           "212.211.132.250", "194.109.137.218" ]
   service: echo
   interval: 4
 
-providers: 
-  ngi:
+interfaces: 
+  ppp0:
+    provider: ngi
     weight: 1
-    interface: ppp0
-    gateway: "81.174.0.1"
-  fw:
+    gateway: "10.0.0.1"
+  eth2:
+    provider: fastweb
     weight: 3
-    interface: eth1
-    gateway: "192.168.1.254"
+    gateway: "192.168.53.1"
