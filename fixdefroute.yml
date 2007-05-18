@@ -1,9 +1,0 @@
-eth1:
-  name: FASTWEB
-  weight: 3
-  gateway: 192.168.1.254
-
-ppp0:
-  name: NGI
-  weight: 1
-  gateway: 81.174.0.1
