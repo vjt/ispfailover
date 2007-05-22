@@ -39,6 +39,7 @@ module IPRoute
     end
 
     def add_nexthop(gw, iface, wgt = 1)
+#      Syslog.info("add_nexthop(#{gw}, #{iface}, #{wgt})")
       Mutex.synchronize do
         if default_route.nil? || default_route.empty?
           `ip -4 route add default #{nexthop(gw, iface, wgt)}`
@@ -50,6 +51,7 @@ module IPRoute
     end
 
     def del_nexthop(gw, iface)
+#      Syslog.info("del_nexthop(#{gw}, #{iface})")
       Mutex.synchronize do
         unless (hops = nexthops(iface)).empty?
           `ip -4 route change default #{hops.join ' '}`
@@ -99,5 +101,10 @@ module IPRoute
     def parse_link(link)
       link.scan(/(^\d+): (\w+):/).map! {|id, iface| [iface, id.to_i]}.flatten
     end
+
+#    def run(cmd)
+#        Syslog.info "executing #{cmd}"
+#        `#{cmd}`
+#    end
   end
 end
