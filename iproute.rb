@@ -87,6 +87,8 @@ module IPRoute
           end
         end
       end
+    rescue
+      retry
     end
 
     protected

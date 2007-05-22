@@ -1,13 +1,14 @@
 probe:
   timeout: 5
   interval: 90
+  service: domain
 
 interfaces: 
   ppp0:
     provider: ngi
-    weight: 1
-    gateway: "10.0.0.1"
-  eth2:
-    provider: fastweb
     weight: 3
-    gateway: "192.168.53.1"
+    gateway: "81.174.0.1"
+  eth2:
+    provider: alice
+    weight: 1
+    gateway: "88.49.177.9"

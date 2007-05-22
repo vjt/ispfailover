@@ -20,7 +20,7 @@ module ISPFailOver
       Syslog.open $0, Syslog::LOG_NDELAY|Syslog::LOG_PID, Syslog::LOG_DAEMON
 
       @conf = YAML.load File.read('ispfailover.yml')
-      @conf[:probe][:hosts] = ('a'..'m').map { |x| Resolv.getaddress("#{x}.root-servers.net") }.compact
+      @conf[:probe][:hosts] = ('a'..'m').map { |x| Resolv.getaddress("#{x}.root-servers.net") }.compact rescue File.read('rootservers.txt').split("\n")
       @conf[:probe][:service] = 53
       Syslog.info "initializing, loaded #{@conf[:probe][:hosts].size} probe hosts"
 
@@ -83,7 +83,7 @@ module ISPFailOver
     def linkmon_proc
       proc {
         IPRoute.foreach_link_change do |action, (iface, id)|
-          provider = @conf[:interfaces][iface][:provider]
+          provider = @conf[:interfaces][iface][:provider] rescue next
           if action == :delete
             Syslog.warning "#{provider} interface #{iface} went down, killing worker thread"
             kill(iface)
@@ -131,7 +131,7 @@ module ISPFailOver
 
     def probe
       @probe[:hosts].shuffle.each do |host|
-        if @conf[:status] == :dead
+        if @conf[:status] == :dead or @conf[:status].nil?
           IPRoute.with_temp_route(host, @conf[:gateway], @conf[:interface]) do
             return :alive if ping(host)
           end
