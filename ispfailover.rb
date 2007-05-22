@@ -71,10 +71,12 @@ module ISPFailOver
     protected
     def master_proc
       proc {
-        loop do
-          Mutex.synchronize do
+	Mutex.synchronize do
+          loop do
             Cond.wait(Mutex)
+#	    Syslog.info "signal received from #{$slot.inspect}"
             update_rib $slot
+#	    Syslog.info "signal dispatched for #{$slot.inspect}"
           end
         end
       }
@@ -107,7 +109,6 @@ module ISPFailOver
 
   class Monitor
     def initialize(conf, probe)
-      sleep 0.4 # give threads a bit of skew
       @conf = conf
       @probe = probe
       @thread = Thread.new &self
