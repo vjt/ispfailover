@@ -1,0 +1,21 @@
+# Probe settings, `timeout' is the probe timeout,
+# `interval' is the check interval threshold.
+# 
+probe:
+  timeout: 5
+  interval: 90
+  service: domain
+
+# Interfaces to monitor.
+# Provider name must be a valid routing table
+# name, as defined in /etc/iproute2/rt_tables
+# 
+interfaces: 
+  ppp0:
+    provider: provider1
+    weight: 3
+    gateway: "10.0.0.254"
+  eth2:
+    provider: provider2
+    weight: 1
+    gateway: "172.16.0.254"
