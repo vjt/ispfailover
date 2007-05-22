@@ -23,5 +23,7 @@ end
 
 if $0 == __FILE__
   host = ARGV[0] || 'localhost'
-  printf("%s alive? - %s\n", host,  Ping.probe(host))
+  service = ARGV[1] || 'echo'
+  local = ARGV[2]
+  printf("%s alive? - %s\n", host, Ping.probe(host, service, local))
 end
