@@ -131,7 +131,7 @@ module ISPFailOver
     end
 
     def probe
-      @probe[:hosts].shuffle.each do |host|
+      @probe[:hosts].shuffle[0..3].each do |host|
         if @conf[:status] == :dead or @conf[:status].nil?
           IPRoute.with_temp_route(host, @conf[:gateway], @conf[:interface]) do
             return :alive if ping(host)
