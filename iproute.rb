@@ -90,6 +90,7 @@ module IPRoute
         end
       end
     rescue
+      Process.wait(-1, Process::WNOHANG)
       retry
     end
 
