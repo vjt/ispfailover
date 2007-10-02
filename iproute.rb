@@ -2,7 +2,7 @@ require 'rubygems'
 require 'facets/core/array/to_h'
 require 'thread'
 
-module Kernel; alias :old_exec :`; def `(cmd); Syslog.info("running #{cmd}"); old_exec cmd; end; end
+#module Kernel; alias :old_exec :`; def `(cmd); Syslog.info("running #{cmd}"); old_exec cmd; end; end
 
 module IPRoute
   Mutex = ::Mutex.new
