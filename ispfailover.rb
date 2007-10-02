@@ -158,8 +158,7 @@ module ISPFailOver
     end
 
     def wait
-      threshold = @conf[:status] == :active ? 30 : 0
-      sleep @probe[:interval] + threshold
+      sleep((@conf[:status] == :alive) ? @probe[:interval] : @probe[:neg_interval])
     end
   end
 end

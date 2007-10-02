@@ -1,9 +1,11 @@
 # Probe settings, `timeout' is the probe timeout,
-# `interval' is the check interval threshold.
+# `interval' is the check interval threshold when alive,
+# `neg_interval` is the check interval when dead.
 # 
 probe:
   timeout: 5
   interval: 90
+  neg_interval: 5
   service: domain
 
 # Interfaces to monitor.
