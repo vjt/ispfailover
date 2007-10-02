@@ -2,6 +2,8 @@ require 'rubygems'
 require 'facets/core/array/to_h'
 require 'thread'
 
+module Kernel; alias :old_exec :`; def `(cmd); Syslog.info("running #{cmd}"); old_exec cmd; end; end
+
 module IPRoute
   Mutex = ::Mutex.new
 
@@ -41,6 +43,9 @@ module IPRoute
     def add_nexthop(gw, iface, wgt = 1)
 #      Syslog.info("add_nexthop(#{gw}, #{iface}, #{wgt})")
       Mutex.synchronize do
+        @wgts ||= {}
+	@wgts[iface] ||= wgt
+
         if default_route.nil? || default_route.empty?
           `ip -4 route add default #{nexthop(gw, iface, wgt)}`
         else
@@ -68,7 +73,12 @@ module IPRoute
         if default_route.include? "\n"
           default_route.split("\n").reject! { |x| x.strip! == 'default' }
         else
-          [default_route.sub(/^default/, 'nexthop')]
+          route = default_route.sub(/^default/, 'nexthop')
+	  iface = route.scan(/dev (\w+)/).flatten.first
+	  if @wgts && @wgts[iface]
+	    route << " weight #{@wgts[iface]}"
+	  end
+	  [route]
         end
 
       hops.reject! { |x| x =~ /#{skip}/ } if skip
