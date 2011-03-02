@@ -100,9 +100,9 @@ module ISPFailOver
 
     def update_rib(conf)
       if conf[:status] == :alive
-        IPRoute.add_nexthop conf[:gateway], conf[:interface], conf[:weight]
+        IPRoute.add_nexthop conf[:gateway], conf[:interface], conf[:provider], conf[:weight]
       else
-        IPRoute.del_nexthop conf[:gateway], conf[:interface]
+        IPRoute.del_nexthop conf[:gateway], conf[:interface], conf[:provider]
       end
     end
   end

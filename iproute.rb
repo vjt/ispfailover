@@ -40,11 +40,13 @@ module IPRoute
       `ip -4 route del #{dest} via #{gw} dev #{iface} table #{table}`
     end
 
-    def add_nexthop(gw, iface, wgt = 1)
+    def add_nexthop(gw, iface, table, wgt = 1)
 #      Syslog.info("add_nexthop(#{gw}, #{iface}, #{wgt})")
       Mutex.synchronize do
         @wgts ||= {}
 	@wgts[iface] ||= wgt
+
+	add_route :default, gw, iface, table
 
         if default_route.nil? || default_route.empty?
           `ip -4 route add default #{nexthop(gw, iface, wgt)}`
@@ -55,7 +57,7 @@ module IPRoute
       end
     end
 
-    def del_nexthop(gw, iface)
+    def del_nexthop(gw, iface, table)
 #      Syslog.info("del_nexthop(#{gw}, #{iface})")
       Mutex.synchronize do
         unless (hops = nexthops(iface)).empty?
@@ -65,6 +67,8 @@ module IPRoute
           `ip -4 route del default`
           `ip -4 route flush cache`
         end
+
+	del_route :default, gw, iface, table
       end
     end
 
