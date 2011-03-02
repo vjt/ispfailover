@@ -84,15 +84,18 @@ module ISPFailOver
 
     def linkmon_proc
       proc {
-        IPRoute.foreach_link_change do |action, (iface, id)|
+        IPRoute.foreach_link_change do |iface, state|
           provider = @conf[:interfaces][iface][:provider] rescue next
-          if action == :delete
+
+          if state == :down && active?(iface)
             Syslog.warning "#{provider} interface #{iface} went down, killing worker thread"
             kill(iface)
             @monitors.values.each { |mon| update_rib mon.conf }
-          elsif !active?(iface)
+
+          elsif state == :up && !active?(iface)
             Syslog.info "#{provider} interface #{iface} is back up, restarting worker thread"
             spawn(iface)
+
           end
         end
       }

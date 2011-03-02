@@ -95,12 +95,9 @@ module IPRoute
 
     def foreach_link_change
       File.popen('ip -o monitor link') do |io|
-        while l = io.readline
-          if l =~ /^Deleted /
-            yield :delete, parse_link(l.gsub!(/^Deleted /, ''))
-          else
-            yield :change, parse_link(l)
-          end
+        while line = io.readline
+          iface, state = parse_link line
+          yield iface, state
         end
       end
     rescue
@@ -114,7 +111,15 @@ module IPRoute
     end
 
     def parse_link(link)
-      link.scan(/(^\d+): (\w+):/).map! {|id, iface| [iface, id.to_i]}.flatten
+      puts link
+      iface, state = link.scan(/^(?:Deleted )?\d+: ([\w\d]+): .*state (DOWN|UP|UNKNOWN)/).first
+
+      state = state.downcase.to_sym
+      if state == :unknown and iface =~ /^ppp/
+        state = :up
+      end
+
+      return [iface, state]
     end
 
 #    def run(cmd)
