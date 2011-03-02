@@ -52,7 +52,7 @@ module ISPFailOver
 
     def kill(interface)
       Mutex.synchronize do
-        @monitors[interface].thread.kill
+        @monitors[interface].down!
         @monitors.delete interface
       end
     end
@@ -65,7 +65,7 @@ module ISPFailOver
 
     def killall
       @master.kill
-      @monitors.each { |m| m.thread.kill }
+      @monitors.each { |m| m.down! }
     end
 
     protected
@@ -116,7 +116,7 @@ module ISPFailOver
       @probe = probe
       @thread = Thread.new &self
     end
-    attr_reader :thread, :conf
+    attr_reader :conf
 
     def to_proc
       proc {
@@ -162,6 +162,11 @@ module ISPFailOver
 
     def wait
       sleep((@conf[:status] == :alive) ? @probe[:interval] : @probe[:neg_interval])
+    end
+
+    def down!
+      @thread.kill
+      @conf[:status] = :dead
     end
   end
 end
