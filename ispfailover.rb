@@ -53,6 +53,7 @@ module ISPFailOver
     def kill(interface)
       Mutex.synchronize do
         @monitors[interface].down!
+        @monitors.values.each { |mon| update_rib mon.conf }
         @monitors.delete interface
       end
     end
@@ -90,7 +91,6 @@ module ISPFailOver
           if state == :down && active?(iface)
             Syslog.warning "#{provider} interface #{iface} went down, killing worker thread"
             kill(iface)
-            @monitors.values.each { |mon| update_rib mon.conf }
 
           elsif state == :up && !active?(iface)
             Syslog.info "#{provider} interface #{iface} is back up, restarting worker thread"
