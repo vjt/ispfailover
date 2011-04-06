@@ -41,8 +41,11 @@ module IPRoute
     end
 
     def add_rule(network, iface, table)
-      `ip -4 rule add from #{network} lookup #{table}`
-      `ip -4 rule add to #{network} dev #{iface} lookup #{table}`
+      `ip -4 rule add from #{network} lookup #{table}` unless \
+        exists?(:rule, "from #{network} lookup #{table}")
+
+      `ip -4 rule add to #{network} dev #{iface} lookup #{table}` unless \
+        exists?(:rule, "from all to #{network} iif #{iface} lookup #{table}")
     end
 
     def del_rule(network, iface, table)
@@ -130,6 +133,11 @@ module IPRoute
       end
 
       return [iface, state]
+    end
+
+    def exists?(kind, arguments)
+      `ip #{kind} ls`.scan(/\t([^\n]+) *\n/).
+        flatten.grep(/#{arguments}/).size > 0
     end
 
 #    def run(cmd)
