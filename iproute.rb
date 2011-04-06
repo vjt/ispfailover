@@ -144,9 +144,10 @@ module IPRoute
         flatten.grep(/#{arguments}/).size > 0
     end
 
-#    def run(cmd)
-#        Syslog.info "executing #{cmd}"
-#        `#{cmd}`
-#    end
+    alias :run :`
+    def `(cmd)
+      Syslog.info cmd
+      run cmd
+    end
   end
 end
