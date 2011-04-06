@@ -1,3 +1,0 @@
-#!/bin/sh
-
-ip rule del from $PPP_LOCAL lookup ngi

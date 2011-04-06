@@ -40,6 +40,16 @@ module IPRoute
       `ip -4 route del #{dest} via #{gw} dev #{iface} table #{table}`
     end
 
+    def add_rule(network, iface, table)
+      `ip -4 rule add from #{network} lookup #{table}`
+      `ip -4 rule add to #{network} dev #{iface} lookup #{table}`
+    end
+
+    def del_rule(network, iface, table)
+      `ip -4 rule del from #{network} lookup #{table}`
+      `ip -4 rule del to #{network} dev #{iface} lookup #{table}`
+    end
+
     def add_nexthop(gw, iface, table, wgt = 1)
 #      Syslog.info("add_nexthop(#{gw}, #{iface}, #{wgt})")
       Mutex.synchronize do

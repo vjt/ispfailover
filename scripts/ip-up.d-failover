@@ -1,5 +1,4 @@
 #!/bin/sh
 
-ip rule add from $PPP_LOCAL lookup ngi
 ip route add default via $PPP_REMOTE dev $PPP_IFACE table ngi
 

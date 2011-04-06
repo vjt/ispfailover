@@ -10,9 +10,7 @@ auto eth2
 iface eth2 inet static
 	address 192.168.53.4
 	netmask 255.255.255.0
-	post-up ip rule add from 192.168.53.4 lookup fastweb
 	post-up ip route add default via 192.168.53.1 table fastweb
-	post-down ip rule del from 192.168.53.4 lookup fastweb
 
 auto ppp0
 iface ppp0 inet ppp
