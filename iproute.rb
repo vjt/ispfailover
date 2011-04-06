@@ -36,6 +36,10 @@ module IPRoute
       `ip -4 route add #{dest} via #{gw} dev #{iface} table #{table}`
     end
 
+    def add_src_route(dest, gw, iface, src, table = 'main')
+      `ip -4 route add #{dest} via #{gw} dev #{iface} src #{src} table #{table}`
+    end
+
     def del_route(dest, gw, iface, table = 'main')
       `ip -4 route del #{dest} via #{gw} dev #{iface} table #{table}`
     end

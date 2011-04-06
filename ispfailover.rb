@@ -101,12 +101,15 @@ module ISPFailOver
       }
     end
 
+    # FIXME this method is simply unreadable and sucky
     def update_rib(conf)
       if conf[:status] == :alive
         IPRoute.add_nexthop conf[:gateway], conf[:interface], conf[:provider], conf[:weight]
+        IPRoute.add_src_route conf[:network], conf[:gateway], conf[:interface], conf[:address], conf[:provider]
         IPRoute.add_rule    conf[:network], conf[:interface], conf[:provider]
       else
         IPRoute.del_nexthop conf[:gateway], conf[:interface], conf[:provider]
+        IPRoute.del_route conf[:network], conf[:gateway], conf[:interface], conf[:provider]
         IPRoute.del_rule    conf[:network], conf[:interface], conf[:provider]
       end
     end
